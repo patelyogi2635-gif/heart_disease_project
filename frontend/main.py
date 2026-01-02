@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-import joblib
 
-# Load saved model, scaler, and expected columns
-model = joblib.load("backend/KNN_heart.pkl")
-scaler = joblib.load("backend/scaler.pkl")
-expected_columns = joblib.load("backend/columns.pkl")
+import requests
+API_URL = " https://heart-disease-backend-6-q9cc.onrender.com/predict"
+
+
+
 
 st.title("Heart Stroke Prediction by Yogi Patel")
 st.markdown("Provide the following details to check your heart stroke risk:")
@@ -23,43 +23,29 @@ exercise_angina = st.selectbox("Exercise-Induced Angina", ["Y", "N"])
 oldpeak = st.slider("Oldpeak (ST Depression)", 0.0, 6.0, 1.0)
 st_slope = st.selectbox("ST Slope", ["Up", "Flat", "Down"])
 
-# When Predict is clicked
 if st.button("Predict"):
-
-    # Create a raw input dictionary
-    raw_input = {
-        'Age': age,
-        'RestingBP': resting_bp,
-        'Cholesterol': cholesterol,
-        'FastingBS': fasting_bs,
-        'MaxHR': max_hr,
-        'Oldpeak': oldpeak,
-        'Sex_' + sex: 1,
-        'ChestPainType_' + chest_pain: 1,
-        'RestingECG_' + resting_ecg: 1,
-        'ExerciseAngina_' + exercise_angina: 1,
-        'ST_Slope_' + st_slope: 1
+    payload = {
+        "age": age,
+        "sex": sex,
+        "chest_pain": chest_pain,
+        "resting_bp": resting_bp,
+        "cholesterol": cholesterol,
+        "fasting_bs": fasting_bs,
+        "resting_ecg": resting_ecg,
+        "max_hr": max_hr,
+        "exercise_angina": exercise_angina,
+        "oldpeak": oldpeak,
+        "st_slope": st_slope
     }
 
-    # Create input dataframe
-    input_df = pd.DataFrame([raw_input])
+    response = requests.post(API_URL, json=payload)
 
-    # Fill in missing columns with 0s
-    for col in expected_columns:
-        if col not in input_df.columns:
-            input_df[col] = 0
+    if response.status_code == 200:
+        result = response.json()
 
-    # Reorder columns
-    input_df = input_df[expected_columns]
-
-    # Scale the input
-    scaled_input = scaler.transform(input_df)
-
-    # Make prediction
-    prediction = model.predict(scaled_input)[0]
-
-    # Show result
-    if prediction == 1:
-        st.error("⚠️ High Risk of Heart Disease")
+        if result["prediction"] == 1:
+            st.error("⚠️ Heart Disease Detected")
+        else:
+            st.success("✅ No Heart Disease Detected")
     else:
-        st.success("✅ Low Risk of Heart Disease")
+        st.warning("Backend API not responding")
